@@ -1,0 +1,26 @@
+#include <iostream>
+#include <fstream> // This library is needed to use ifstream
+#include <string>
+#include <sstream> // I need this for istringstream
+using namespace std; //This will save me time from writing std all of the time
+
+int main() {
+	ifstream file("C:\\Users\\Jacob\\OneDrive\\Documents\\coursework.csv");
+	if (!file.is_open()) {	//Checking that the file is open
+		cerr << "Error opening coursework.csv" << endl;
+		return 1; // Exiting the program with and error code
+	}
+
+	string line; // Variable needed to store each line of the file
+	while (getline(file, line)) {
+		istringstream lineStream(line); // Turning the lines into a stream named lineStream
+		string name, age, city;
+		getline(lineStream, name, ','); //Extracting the name, age, city fields using ' delimiter
+		getline(lineStream, age, ',');
+		getline(lineStream, city, ',');
+		// I need to print the data
+		cout << "NAME: " <<name << "  AGE: " << age << "  CITY: " << city << endl;
+	}
+	file.close(); // Always remember to close the file
+	return 0; 
+}
