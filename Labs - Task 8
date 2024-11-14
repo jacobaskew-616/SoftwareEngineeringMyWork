@@ -1,0 +1,91 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+class book { // Part of task 1
+public:
+	string title;
+	string author;
+	float price;
+
+	void displayInfo() {
+		cout << "Title: " << title << "\nAuthor: " << author << "\nPrice: " << price << endl;
+	}
+};
+
+class student { // Part of task 2
+private:
+	string name;
+	int age;
+	char grade;
+public:
+	void setName(string studentName) { name = studentName; }
+	string getName() { return name; }
+
+	void setAge(int studentAge) { age = studentAge;  }
+	int getAge(){ return age; }
+
+	void setGrade(char studentGrade) { grade = studentGrade; }
+	char getGrade() { return grade; }
+};
+
+class Car {
+private:
+	string make;
+	int year;
+
+public:
+	Car() {
+		make = "Unknown";
+		year = 0;
+	}
+	void carInfo() {
+		cout << "\nCar: " << endl;
+		cout << "The make is: " << make << "\nThe year it was released is: " << year << endl;
+	}
+
+	void setMake(string carMake) { make = carMake; }
+	string getMake() { return make; }
+
+	void setYear(int carYear) { year = carYear; }
+	int getYear() { return year; }
+
+	Car(string m, int y){
+		make = m;
+		year = y;
+	}
+
+	~Car() {
+		cout << "\nThe destructor has been called" << endl;
+	}
+
+};
+
+int main() { // Part of task 1
+	//book Lorax;
+	//Lorax.title = "The Lorax";
+	//Lorax.author = "Dr.Seuss";
+	//Lorax.price = 999.99;
+	//Lorax.displayInfo();
+	
+	//student newStudent; // Part of task 2
+	//newStudent.setName("Mark");
+	//cout << "The new students name is: " << newStudent.getName() << endl;
+	//newStudent.setAge(21);
+	//cout << "The new students age is: " << newStudent.getAge() << endl;
+	//newStudent.setGrade('A');
+	//cout << "The new students grade is: " << newStudent.getGrade() << endl;
+
+	Car car1;
+	car1.carInfo();
+	Car car2("Fiat", 2001);
+	car2.carInfo();
+	Car car3("Volvo", 2015);
+	car3.carInfo();
+	Car car4;
+	car4.carInfo();
+
+
+
+	return 0;
+}
