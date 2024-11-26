@@ -1,0 +1,60 @@
+#include <iostream>
+using namespace std;
+
+const int WIDTH = 40;  // Maze width
+const int HEIGHT = 20; // Maze height
+
+// Function to create the maze
+void createMaze(char maze[HEIGHT][WIDTH]) {
+    for (int i = 0; i < HEIGHT; ++i) {
+        for (int j = 0; j < WIDTH; ++j) {
+            maze[i][j] = '#'; // The # represents the space of the maze
+        }
+    }
+}
+
+// Function to display the maze
+void displayMaze(char maze[HEIGHT][WIDTH]) {
+    for (int i = 0; i < HEIGHT; ++i) {
+        for (int j = 0; j < WIDTH; ++j) {
+            cout << maze[i][j];
+        }
+        cout << endl;
+    }
+}
+
+// Function to display the game menu
+void displayMenu() {
+    cout << "=== Maze Game ===" << endl;
+    cout << "1. Start New Game" << endl;
+    cout << "2. Quit" << endl;
+    cout << "Enter your choice: ";
+}
+
+int main() {
+    char maze[HEIGHT][WIDTH]; // Declaring the maze
+    int choice;
+
+    while (true) { // By placing the maze in a loop I can validate that the user has entered a valid choice
+        displayMenu(); // Without the the program would just break if an invalid character or data type was entered
+        cin >> choice;
+
+        if (choice == 1) {
+            // Start a new game
+            createMaze(maze);  // Create and initialize the maze
+            cout << "Starting a new game...\n";
+            displayMaze(maze); // Display the maze
+            break;
+        }
+        else if (choice == 2) {
+            // Quit the game
+            cout << "Thank you for playing! Goodbye.\n";
+            break; // Exit the loop
+        }
+        else {
+            cout << "Invalid choice. Please try again.\n";
+        }
+    }
+
+    return 0;
+}
