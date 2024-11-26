@@ -1,0 +1,159 @@
+#include <iostream>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+#include <thread>   // For sleep
+#include <chrono>   // For sleep
+#include <algorithm>  // For std::shuffle
+#include <random>     // For random_device
+
+using namespace std;
+
+// Maze settings
+const int WIDTH = 20;
+const int HEIGHT = 10;
+
+// Directions for player and enemy movement
+const int dx[] = { 0, 1, 0, -1 };  // Right, Down, Left, Up
+const int dy[] = { 1, 0, -1, 0 };
+
+// Maze grid and the player
+char maze[HEIGHT][WIDTH];
+int playerX = 1, playerY = 1;
+int exitX = WIDTH - 2, exitY = HEIGHT - 2;
+int enemyX = 10, enemyY = 5;
+
+// Function to initialize the maze with walls
+void initializeMaze() {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == 0 || j == 0 || i == HEIGHT - 1 || j == WIDTH - 1) {
+                maze[i][j] = '#';  // Wall
+            }
+            else {
+                maze[i][j] = ' ';  // Empty space
+            }
+        }
+    }
+}
+
+// Recursive backtracking algorithm for maze generation
+void generateMaze(int x, int y) {
+    // Random directions to explore
+    int directions[4] = { 0, 1, 2, 3 };
+
+    // Shuffle directions using a random engine
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(directions, directions + 4, g);
+
+    for (int i = 0; i < 4; i++) {
+        int nx = x + dx[directions[i]] * 2;
+        int ny = y + dy[directions[i]] * 2;
+
+        if (nx > 0 && nx < WIDTH - 1 && ny > 0 && ny < HEIGHT - 1 && maze[ny][nx] == ' ') {
+            maze[ny][nx] = '.';  // Mark the path
+            maze[y + dy[directions[i]]][x + dx[directions[i]]] = '.';  // Mark the connecting path
+            generateMaze(nx, ny);  // Recursively generate the maze
+        }
+    }
+}
+
+// Function to draw the maze, player, exit, and enemy
+void drawMaze() {
+    system("cls");  // Clear the console screen
+
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == playerY && j == playerX) {
+                cout << 'P';  // Player
+            }
+            else if (i == exitY && j == exitX) {
+                cout << 'E';  // Exit
+            }
+            else if (i == enemyY && j == enemyX) {
+                cout << 'X';  // Enemy
+            }
+            else {
+                cout << maze[i][j];  // Maze walls and paths
+            }
+        }
+        cout << endl;
+    }
+}
+
+// Function to move the player
+void movePlayer(char direction) {
+    int newX = playerX;
+    int newY = playerY;
+
+    switch (direction) {
+    case 'w': newY -= 1; break;  // Up
+    case 'a': newX -= 1; break;  // Left
+    case 's': newY += 1; break;  // Down
+    case 'd': newX += 1; break;  // Right
+    }
+
+    // Check if the new position is within bounds and not a wall
+    if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+        playerX = newX;
+        playerY = newY;
+    }
+}
+
+// Function to move the enemy randomly
+void moveEnemy() {
+    int direction = rand() % 4;
+    int newX = enemyX + dx[direction];
+    int newY = enemyY + dy[direction];
+
+    if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+        enemyX = newX;
+        enemyY = newY;
+    }
+}
+
+// Function to check if the player has won
+bool hasWon() {
+    return playerX == exitX && playerY == exitY;
+}
+
+int main() {
+    srand(time(0));  // Seed for random number generation
+    initializeMaze();
+    maze[playerY][playerX] = '.';  // Mark the player's starting position
+    maze[exitY][exitX] = '.';      // Mark the exit
+    generateMaze(1, 1);  // Generate the maze starting from position (1, 1)
+
+    while (true) {
+        drawMaze();  // Draw the maze
+
+        if (hasWon()) {
+            cout << "You have won! Congratulations!" << endl;
+            break;
+        }
+
+        // Handle player input (for simplicity, here we use cin for input)
+        char move;
+        cout << "Move (w/a/s/d): ";
+        cin >> move;
+
+        // Move the player based on key press
+        if (move == 'w' || move == 'a' || move == 's' || move == 'd') {
+            movePlayer(move);
+        }
+
+        moveEnemy();  // Move the enemy
+
+        // Check if the player has encountered the enemy
+        if (playerX == enemyX && playerY == enemyY) {
+            cout << "You were caught by an enemy! Game over." << endl;
+            break;
+        }
+
+        // Sleep to make the game playable
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    return 0;
+}
