@@ -1,0 +1,151 @@
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <conio.h>  // For _kbhit() and _getch() on Windows
+#include <windows.h>  // For Sleep()
+
+using namespace std;
+
+// Directions for player and enemy movement
+const int dx[] = { 0, 1, 0, -1 };  // Right, Down, Left, Up
+const int dy[] = { 1, 0, -1, 0 };
+
+// Max maze size
+const int MAX_WIDTH = 50;
+const int MAX_HEIGHT = 40;
+
+// Maze grid and the player
+int WIDTH, HEIGHT;
+char maze[MAX_HEIGHT][MAX_WIDTH];  // Static 2D array for maze
+int playerX, playerY;
+int exitX, exitY;
+int enemyX, enemyY;
+
+// Function to initialize the maze with walls and borders
+void initializeMaze() {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == 0 || j == 0 || i == HEIGHT - 1 || j == WIDTH - 1) {
+                maze[i][j] = '#';  // Wall for borders
+            }
+            else {
+                maze[i][j] = ' ';  // Empty space
+            }
+        }
+    }
+}
+
+// Function to draw the maze, player, exit, and enemy
+void drawMaze() {
+    system("cls");  // Clear the console screen
+
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == playerY && j == playerX) {
+                cout << 'P';  // Player
+            }
+            else if (i == exitY && j == exitX) {
+                cout << 'E';  // Exit
+            }
+            else if (i == enemyY && j == enemyX) {
+                cout << 'X';  // Enemy
+            }
+            else {
+                cout << maze[i][j];  // Maze walls (and empty spaces)
+            }
+        }
+        cout << endl;
+    }
+}
+
+// Function to move the player
+void movePlayer(char direction) {
+    int newX = playerX;
+    int newY = playerY;
+
+    switch (direction) {
+    case 'w': newY -= 1; break;  // Up
+    case 'a': newX -= 1; break;  // Left
+    case 's': newY += 1; break;  // Down
+    case 'd': newX += 1; break;  // Right
+    }
+
+    // Check if the new position is within bounds and not a wall
+    if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+        playerX = newX;
+        playerY = newY;
+    }
+}
+
+// Function to move the enemy randomly
+void moveEnemy() {
+    int direction = rand() % 4;
+    int newX = enemyX + dx[direction];
+    int newY = enemyY + dy[direction];
+
+    if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+        enemyX = newX;
+        enemyY = newY;
+    }
+}
+
+// Function to check if the player has won
+bool hasWon() {
+    return playerX == exitX && playerY == exitY;
+}
+
+// Function to initialize game parameters (random maze size, etc.)
+void initializeGame() {
+    // Randomize maze dimensions (within limits)
+    WIDTH = rand() % (MAX_WIDTH - 5) + 10;  // Random width between 10 and MAX_WIDTH (25)
+    HEIGHT = rand() % (MAX_HEIGHT - 4) + 7;  // Random height between 7 and MAX_HEIGHT (12)
+
+    // Set initial positions of player and exit
+    playerX = 1;
+    playerY = 1;
+    exitX = WIDTH - 2;
+    exitY = HEIGHT - 2;
+
+    // Set enemy position
+    enemyX = rand() % (WIDTH - 2) + 1;
+    enemyY = rand() % (HEIGHT - 2) + 1;
+
+    // Initialize the maze (set walls)
+    initializeMaze();
+}
+
+int main() {
+    srand(time(0));  // Seed for random number generation
+    initializeGame();  // Initialize game parameters and maze
+
+    while (true) {
+        drawMaze();  // Draw the maze
+
+        if (hasWon()) {
+            cout << "You have won! Congratulations!" << endl;
+            break;
+        }
+
+        if (_kbhit()) {  // Check if a key is pressed
+            char move = _getch();  // Get the pressed key
+
+            // Move the player based on key press
+            if (move == 'w' || move == 'a' || move == 's' || move == 'd') {
+                movePlayer(move);
+            }
+        }
+
+        moveEnemy();  // Move the enemy
+
+        // Check if the player has encountered the enemy
+        if (playerX == enemyX && playerY == enemyY) {
+            cout << "You were caught by an enemy! Game over." << endl;
+            break;
+        }
+
+        // Sleep for a short time to make the game playable
+        Sleep(100);  // Sleep for 100 milliseconds
+    }
+
+    return 0;
+}
