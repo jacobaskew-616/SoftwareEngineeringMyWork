@@ -1,0 +1,297 @@
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <conio.h>  // For _kbhit() and _getch() on Windows
+#include <windows.h>  // For Sleep()
+#include <vector>
+#include <string>
+
+using namespace std;
+
+// Directions for player and enemy movement
+const int dx[] = { 0, 1, 0, -1 };  // Right, Down, Left, Up
+const int dy[] = { 1, 0, -1, 0 };
+
+// Max maze size
+const int MAX_WIDTH = 50;
+const int MAX_HEIGHT = 40;
+
+// Maze grid and the player
+int WIDTH, HEIGHT;
+char maze[MAX_HEIGHT][MAX_WIDTH];  // Static 2D array for maze
+int playerX, playerY;
+int exitX, exitY;
+
+// Enemy structure to handle multiple enemies
+struct Enemy {
+    int x, y;
+};
+vector<Enemy> enemies;  // Vector to hold all enemies
+int enemyCount = 1;      // Default number of enemies
+int startingEnemyCount = 1; // To keep track of the initial setting
+
+// Puzzle structure
+struct Puzzle {
+    int x, y;
+    bool solved;
+};
+
+vector<Puzzle> puzzles;  // Vector to store puzzles
+int totalPuzzles = 1;    // Starting number of puzzles
+int solvedPuzzles = 0;   // Track how many puzzles have been solved
+
+// Level progression
+int currentLevel = 1;
+
+// Function prototypes
+void initializeMaze();
+void drawMaze();
+void movePlayer(char direction);
+void moveEnemies();
+bool hasWon();
+void initializeGame();
+void gameMenu();
+void nextLevel();
+bool solvePuzzle(int puzzleIndex);
+
+// Function to initialize the maze
+void initializeMaze() {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            if (i == 0 || j == 0 || i == HEIGHT - 1 || j == WIDTH - 1) {
+                maze[i][j] = '#';  // Wall for borders
+            }
+            else {
+                maze[i][j] = ' ';  // Empty space
+            }
+        }
+    }
+
+    // Place obstacles in the maze
+    int numObstacles = (WIDTH * HEIGHT) / 10;  // 10% of the grid size
+    for (int i = 0; i < numObstacles; i++) {
+        int obstacleX = rand() % (WIDTH - 2) + 1;
+        int obstacleY = rand() % (HEIGHT - 2) + 1;
+
+        if ((obstacleX != playerX || obstacleY != playerY) &&
+            (obstacleX != exitX || obstacleY != exitY)) {
+            maze[obstacleY][obstacleX] = '#';  // Place obstacle
+        }
+    }
+
+    // Clear previous puzzles and place new ones
+    puzzles.clear();
+    solvedPuzzles = 0;
+    for (int i = 0; i < totalPuzzles; i++) {
+        int puzzleX, puzzleY;
+        do {
+            puzzleX = rand() % (WIDTH - 2) + 1;
+            puzzleY = rand() % (HEIGHT - 2) + 1;
+        } while (maze[puzzleY][puzzleX] == '#' || (puzzleX == playerX && puzzleY == playerY) || (puzzleX == exitX && puzzleY == exitY));
+
+        Puzzle newPuzzle = { puzzleX, puzzleY, false };
+        puzzles.push_back(newPuzzle);
+        maze[puzzleY][puzzleX] = '?';  // Mark as puzzle
+    }
+}
+
+// Function to draw the maze
+void drawMaze() {
+    system("cls");
+
+    cout << "LEVEL: " << currentLevel << " | ENEMIES: " << enemies.size()
+        << " | PUZZLES: " << totalPuzzles << " | SOLVED: " << solvedPuzzles << "\n\n";
+
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            bool enemyDrawn = false;
+            for (const Enemy& e : enemies) {
+                if (i == e.y && j == e.x) {
+                    cout << 'X';  // Enemy
+                    enemyDrawn = true;
+                    break;
+                }
+            }
+
+            if (!enemyDrawn) {
+                if (i == playerY && j == playerX) {
+                    cout << 'P';  // Player
+                }
+                else if (i == exitY && j == exitX) {
+                    cout << 'E';  // Exit
+                }
+                else {
+                    cout << maze[i][j];
+                }
+            }
+        }
+        cout << endl;
+    }
+}
+
+// Function to move the player
+void movePlayer(char direction) {
+    int newX = playerX, newY = playerY;
+
+    switch (direction) {
+    case 'w': newY -= 1; break;
+    case 'a': newX -= 1; break;
+    case 's': newY += 1; break;
+    case 'd': newX += 1; break;
+    }
+
+    if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+        playerX = newX;
+        playerY = newY;
+    }
+
+    // Check if the player encounters a puzzle
+    for (int i = 0; i < puzzles.size(); i++) {
+        if (playerX == puzzles[i].x && playerY == puzzles[i].y && !puzzles[i].solved) {
+            if (solvePuzzle(i)) {
+                puzzles[i].solved = true;
+                solvedPuzzles++;
+            }
+            break;
+        }
+    }
+}
+
+// Function to move enemies randomly
+void moveEnemies() {
+    for (Enemy& e : enemies) {
+        int direction = rand() % 4;
+        int newX = e.x + dx[direction];
+        int newY = e.y + dy[direction];
+
+        if (maze[newY][newX] != '#' && newX >= 0 && newX < WIDTH && newY >= 0 && newY < HEIGHT) {
+            e.x = newX;
+            e.y = newY;
+        }
+    }
+}
+
+// Function to check if the player has won
+bool hasWon() {
+    return playerX == exitX && playerY == exitY && solvedPuzzles == totalPuzzles;
+}
+
+// Function to initialize game parameters
+void initializeGame() {
+    WIDTH = rand() % (MAX_WIDTH - 5) + 10;
+    HEIGHT = rand() % (MAX_HEIGHT - 4) + 7;
+
+    playerX = 1;
+    playerY = 1;
+    exitX = WIDTH - 2;
+    exitY = HEIGHT - 2;
+
+    enemies.clear();
+    for (int i = 0; i < enemyCount; i++) {
+        Enemy e = { rand() % (WIDTH - 2) + 1, rand() % (HEIGHT - 2) + 1 };
+        enemies.push_back(e);
+    }
+
+    initializeMaze();
+}
+
+// Function to advance to the next level
+void nextLevel() {
+    currentLevel++;
+    enemyCount += 2;  // Increase enemies by 2 each level
+    totalPuzzles++;   // Increase puzzles by 1 each level
+    initializeGame();
+}
+
+// Function to display the game menu
+void gameMenu() {
+    while (true) {
+        cout << "\n===== GAME MENU =====\n";
+        cout << "1. Start New Game\n";
+        cout << "2. Settings\n";
+        cout << "3. Quit\n";
+        cout << "Select an option: ";
+        int choice;
+        cin >> choice;
+
+        if (choice == 1) {
+            currentLevel = 1;  // Reset level count
+            enemyCount = startingEnemyCount;
+            totalPuzzles = 1;  // Start with 1 puzzle
+            initializeGame();
+            break;
+        }
+        else if (choice == 2) {
+            cout << "\nEnter the number of starting enemies (1-10): ";
+            cin >> startingEnemyCount;
+            enemyCount = startingEnemyCount;
+            if (enemyCount < 1) enemyCount = 1;
+            if (enemyCount > 10) enemyCount = 10;
+        }
+        else if (choice == 3) {
+            exit(0);
+        }
+        else {
+            cout << "Invalid choice. Please try again.\n";
+        }
+    }
+}
+
+// Function to solve a puzzle with two random numbers
+bool solvePuzzle(int puzzleIndex) {
+    cout << "\nYou encountered a puzzle! Solve it to proceed.\n";
+
+    // Generate two random numbers between 1 and 999
+    int num1 = rand() % 999 + 1;
+    int num2 = rand() % 999 + 1;
+    int correctAnswer = num1 + num2;
+
+    // Ask the player to solve the puzzle
+    int answer;
+    cout << "What is " << num1 << " + " << num2 << "? ";
+    cin >> answer;
+
+    if (answer == correctAnswer) {
+        cout << "Correct! Puzzle solved.\n";
+        return true;
+    }
+    else {
+        cout << "Wrong answer! Try again.\n";
+        return false;
+    }
+}
+
+
+int main() {
+    srand(time(0));
+    gameMenu();
+
+    while (true) {
+        drawMaze();
+
+        if (hasWon()) {
+            cout << "Level " << currentLevel << " complete! Moving to the next level...\n";
+            Sleep(2000);
+            nextLevel();
+            continue;
+        }
+
+        if (_kbhit()) {
+            char move = _getch();
+            movePlayer(move);
+        }
+
+        moveEnemies();
+
+        for (const Enemy& e : enemies) {
+            if (playerX == e.x && playerY == e.y) {
+                cout << "You were caught by an enemy! Game over.\n";
+                return 0;
+            }
+        }
+
+        Sleep(300);
+    }
+
+    return 0;
+}
