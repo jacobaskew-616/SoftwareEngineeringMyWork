@@ -1,0 +1,223 @@
+/*
+
+------------------DR VASILIOS KELEFOURAS-----------------------------------------------------
+
+------------------COMP1001 ------------------------------------------------------------------
+
+------------------COMPUTER SYSTEMS MODULE-------------------------------------------------
+
+------------------UNIVERSITY OF PLYMOUTH, SCHOOL OF ENGINEERING, COMPUTING AND MATHEMATICS---
+
+*/
+
+
+#include <stdio.h>   // Needed for printf function 
+
+#include <stdlib.h>  // Needed for rand() function 
+
+#include <windows.h> // Needed for pause() function 
+
+#include <time.h>    // Needed for clock() function 
+
+#include <math.h>    // Needed for abs() 
+
+#include <omp.h>     // Needed for the timer 
+
+#include <immintrin.h> 
+
+#include <string.h>  // Needed for memcpy function 
+
+#define EPSILON 0.00001 // Define acceptable margin of error 
+
+#define N 256 
+
+float A[N][N], B[N][N], C[N][N]; // Input matrices 
+
+void init();
+
+void q1();
+
+void q1_vec_j(); // Vectorized J loop 
+
+void q1_vec_k(); // Vectorized K loop 
+
+unsigned short int equal(float a, float b);
+
+unsigned short int check_correctness(float original_result[N][N], float vectorized_result[N][N]);
+
+// Function to calculate and print FLOPs for q1
+void calculate_flops(int n) {
+    float original_result[N][N]; // To store the result of the scalar version 
+    double start_1, end_1, exec_time;
+    int i;
+
+    // Initialize arrays 
+    init();
+
+    // Measure execution time for q1() with a dynamic number of iterations
+    exec_time = 0.0;
+    int runs = 0;
+
+    // Continue until the total execution time exceeds 10 seconds
+    while (exec_time < 10.0) {
+        start_1 = omp_get_wtime();
+
+        // Run the q1() function once per iteration
+        q1();
+
+        end_1 = omp_get_wtime();
+        exec_time += (end_1 - start_1);
+        runs++;
+    }
+
+    // Print the total execution time after all iterations
+    printf("\nTotal execution time for %d iterations: %f seconds\n", runs, exec_time);
+
+    // Calculate average execution time
+    double avg_exec_time = exec_time / runs;
+
+    // Calculate FLOPs
+    float flops = (2.0 * n * n * n) / avg_exec_time;
+
+    printf("N = %d, Average Execution Time = %f seconds, FLOPs = %f\n", n, avg_exec_time, flops);
+}
+
+int main() {
+
+    float original_result[N][N]; // To store the result of the scalar version 
+
+    double start_1, end_1;
+
+    // Initialize arrays 
+    init();
+
+    // Scalar computation 
+    start_1 = omp_get_wtime();
+    q1();
+    end_1 = omp_get_wtime();
+    printf("Original q1() time: %f seconds\n", end_1 - start_1);
+
+    // Save the result of the original routine 
+    memcpy(original_result, C, sizeof(float) * N * N);
+
+    // Vectorized K loop 
+    init(); // Reinitialize arrays 
+    printf("\nPerforming vectorized k loop (q1_vec_k)...\n");
+    start_1 = omp_get_wtime();
+    q1_vec_k();
+    end_1 = omp_get_wtime();
+    printf("Vectorized q1_vec_k() time: %f seconds\n", end_1 - start_1);
+    if (check_correctness(original_result, C) == 0)
+        printf("The results for q1_vec_k match!\n");
+    else
+        printf("There is a mismatch for the vectorized k loop.\n");
+
+    // Vectorized J loop 
+    init(); // Reinitialize arrays 
+    printf("\nPerforming vectorized j loop (q1_vec_j)...\n");
+    start_1 = omp_get_wtime();
+    q1_vec_j();
+    end_1 = omp_get_wtime();
+    printf("Vectorized q1_vec_j() time: %f seconds\n", end_1 - start_1);
+    if (check_correctness(original_result, C) == 0)
+        printf("The results for q1_vec_j match!\n");
+    else
+        printf("There is a mismatch for the vectorized j loop.\n");
+
+    // Calculate FLOPs for different N values
+    int n_values[] = { 32, 64, 128, 256, 512, 1024 };
+    for (int i = 0; i < 6; i++) {
+        calculate_flops(n_values[i]);
+    }
+
+    system("pause");
+
+    return 0;
+}
+
+void init() {
+    float e = 0.1234f, p = 0.7264f;
+
+    for (unsigned int i = 0; i < N; i++) {
+        for (unsigned int j = 0; j < N; j++) {
+            A[i][j] = ((i - j) % 9) + p;
+            B[i][j] = ((i + j) % 11) + e;
+            C[i][j] = 0.0f;
+        }
+    }
+}
+
+void q1() {
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            for (int k = 0; k < N; k++)
+                C[i][j] += A[i][k] * B[k][j];
+}
+
+void q1_vec_k() {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            float temp_C = 0.0f; // Accumulator for the scalar result 
+            __m256 vec_C = _mm256_setzero_ps(); // Initialize the AVX accumulator 
+
+            for (int k = 0; k < N; k += 8) {
+                // Load 8 consecutive elements from A[i][k:k+7] (row-major access) 
+                __m256 vec_A = _mm256_loadu_ps(&A[i][k]);
+
+                // Load 8 consecutive elements from B[k:k+7][j] (column-major access) 
+                __m256 vec_B = _mm256_set_ps(
+                    B[k + 7][j], B[k + 6][j], B[k + 5][j], B[k + 4][j],
+                    B[k + 3][j], B[k + 2][j], B[k + 1][j], B[k + 0][j]);
+
+                // Perform the FMA operation: vec_C += vec_A * vec_B 
+                vec_C = _mm256_fmadd_ps(vec_A, vec_B, vec_C);
+            }
+
+            // Horizontal sum of vec_C to compute the final scalar result for C[i][j] 
+            float temp[8];
+            _mm256_storeu_ps(temp, vec_C);
+            temp_C += temp[0] + temp[1] + temp[2] + temp[3] +
+                temp[4] + temp[5] + temp[6] + temp[7];
+
+            // Assign the computed value to C[i][j] 
+            C[i][j] = temp_C;
+        }
+    }
+}
+
+void q1_vec_j() {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j += 8) {
+            __m256 vec_C = _mm256_setzero_ps(); // Accumulator 
+
+            for (int k = 0; k < N; k++) {
+                __m256 vec_A = _mm256_set1_ps(A[i][k]);     // Broadcast A[i][k] 
+                __m256 vec_B = _mm256_loadu_ps(&B[k][j]);  // Load 8 elements from B 
+                vec_C = _mm256_fmadd_ps(vec_A, vec_B, vec_C); // Multiply and accumulate 
+            }
+
+            _mm256_storeu_ps(&C[i][j], vec_C); // Store result back to C 
+        }
+    }
+}
+
+unsigned short int equal(float a, float b) {
+    float temp = a - b;
+    if (fabs(temp) / fabs(b) < EPSILON)
+        return 0; // success 
+    else
+        return 1; // failure 
+}
+
+unsigned short int check_correctness(float original_result[N][N], float vectorized_result[N][N]) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (equal(original_result[i][j], vectorized_result[i][j]) == 1) {
+                printf("Mismatch at result[%d][%d]: Original = %f, Vectorized = %f\n",
+                    i, j, original_result[i][j], vectorized_result[i][j]);
+                return 1; // Failure 
+            }
+        }
+    }
+    return 0; // Success 
+}
